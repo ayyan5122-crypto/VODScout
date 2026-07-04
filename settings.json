@@ -1,0 +1,10 @@
+{
+  "last_url": "",
+  "last_selected_file": "C:/VODS/vod.mp4",
+  "window_size": "1536x801",
+  "theme": "System",
+  "content_profile": "Horror",
+  "clip_length": 60,
+  "whisper_model": "base",
+  "chunk_size": 10
+}
