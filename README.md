@@ -108,4 +108,4 @@ settings.py
 
 ## License
 
-See the LICENSE file for licensing information.
+This project is licensed under the MIT License. See the LICENSE file for details.
