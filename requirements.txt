@@ -3,12 +3,10 @@ annotated-doc==0.0.4
 anyio==4.14.1
 av==18.0.0
 blinker==1.9.0
-bottle==0.13.4
 certifi==2026.6.17
 cffi==2.0.0
 charset-normalizer==3.4.7
 click==8.4.2
-clr_loader==0.3.1
 colorama==0.4.6
 contourpy==1.3.3
 ctranslate2==4.8.0
@@ -17,7 +15,6 @@ cycler==0.12.1
 darkdetect==0.8.0
 faster-whisper==1.2.1
 filelock==3.29.4
-Flask==3.1.3
 flatbuffers==25.12.19
 fonttools==4.63.0
 fsspec==2026.6.0
@@ -42,8 +39,6 @@ numba==0.66.0
 numpy==2.4.6
 nvidia-ml-py==13.610.43
 onnxruntime==1.27.0
-openai-whisper==20250625
-opencv-python==5.0.0.93
 opencv-python-headless==5.0.0.93
 packaging==26.2
 pefile==2024.8.26
@@ -59,7 +54,6 @@ pyinstaller==6.21.0
 pyinstaller-hooks-contrib==2026.6
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
-pythonnet==3.1.0
 pywebview==6.2.1
 pywin32-ctypes==0.2.3
 PyYAML==6.0.3
@@ -71,15 +65,12 @@ shellingham==1.5.4
 six==1.17.0
 sympy==1.14.0
 tiktoken==0.13.0
-tk==0.1.0
 tokenizers==0.23.1
 torch==2.12.1
 torchvision==0.27.1
 tqdm==4.68.3
 typer==0.25.1
 typing_extensions==4.16.0
-ultralytics==8.4.84
-ultralytics-thop==2.0.20
 urllib3==2.7.0
 Werkzeug==3.1.8
 yt-dlp==2026.6.9
