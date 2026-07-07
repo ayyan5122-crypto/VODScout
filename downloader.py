@@ -4,11 +4,27 @@ import logging
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
 from settings import DOWNLOADS_DIR
+
+
+def _get_resource_path(relative: str) -> Path:
+    """Return an absolute path to a bundled resource.
+
+    * PyInstaller one-file build: resources are extracted to ``sys._MEIPASS``
+      at runtime, so we resolve against that directory.
+    * Normal Python / VS Code: we resolve against the directory that contains
+      this source file (i.e. the project root when the standard layout is used).
+    """
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).parent
+    return base / relative
 
 
 LOGGER = logging.getLogger(__name__)
@@ -87,6 +103,10 @@ class VideoDownloader:
         LOGGER.info("Starting URL download: %s", clean_url)
         if section.is_active:
             LOGGER.info("Requested URL section: %s", section.label())
+            
+
+        if "twitch.tv/videos/" in clean_url and section.is_active:
+            return self._download_with_twitch_downloader(clean_url, section, progress_callback)
 
         try:
             from yt_dlp import YoutubeDL
@@ -121,59 +141,110 @@ class VideoDownloader:
         except Exception as exc:
             raise RuntimeError(f"Download failed: {exc}") from exc
 
-        if progress_callback is not None:
-            progress_callback(1.0, f"Downloaded: {downloaded_path.name}")
-        LOGGER.info("Download saved to %s", downloaded_path)
         return downloaded_path
 
-    def prepare_local_video(
+    def _download_with_twitch_downloader(
         self,
-        source_path: Path,
+        url: str,
         section: MediaSection,
         progress_callback: ProgressCallback | None = None,
     ) -> Path:
-        source = Path(source_path).expanduser()
-        if not source.exists() or not source.is_file():
-            raise FileNotFoundError(f"Local video was not found: {source}")
+        LOGGER.info("Starting TwitchDownloaderCLI download...")
+        if progress_callback is not None:
+            progress_callback(0.0, "Starting TwitchDownloaderCLI download...")
 
-        section.validate()
-        self.downloads_dir.mkdir(parents=True, exist_ok=True)
-        LOGGER.info("Preparing local video: %s", source)
+        match = re.search(r"twitch\.tv/videos/(\d+)", url)
+        video_id = match.group(1) if match else "unknown"
+        
+        output_name = f"twitch_vod_{video_id}_{section_suffix(section)}.mp4"
+        output_path = self.downloads_dir / output_name
 
-        if section.is_active:
-            output_path = self._unique_path(
-                self.downloads_dir
-                / f"{sanitize_filename(source.stem)}_{section_suffix(section)}.mp4"
+        twitch_cli = str(_get_resource_path("tools/TwitchDownloaderCLI.exe"))
+        cmd = [
+            twitch_cli,
+            "videodownload",
+            "--id", url,
+            "-o", str(output_path),
+        ]
+
+        LOGGER.warning("=== COMMAND BEFORE TIMESTAMPS ===")
+        LOGGER.warning(cmd)
+
+        if section.start_seconds is not None:
+            start = format_timestamp(section.start_seconds)
+            LOGGER.warning(f"START = {start}")
+            cmd.extend(["--beginning", start])
+
+        if section.end_seconds is not None:
+            end = format_timestamp(section.end_seconds)
+            LOGGER.warning(f"END = {end}")
+            cmd.extend(["--ending", end])
+
+        cmd.extend(["--trim-mode", "Exact", "--collision", "Overwrite"])
+        
+        LOGGER.warning("FINAL COMMAND:")
+        LOGGER.warning(" ".join(cmd))
+        # Prevent Windows from opening a black console window for the child process.
+        # CREATE_NO_WINDOW is a Windows-only creation flag; guard it so the code
+        # remains safe on Linux / macOS (e.g. during development or CI).
+        _creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        try:
+            completed = subprocess.run(
+                cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=_creation_flags,
             )
-            self._extract_section(source, output_path, section)
-            if progress_callback is not None:
-                progress_callback(1.0, f"Prepared section: {output_path.name}")
-            LOGGER.info("Local video section saved to %s", output_path)
-            return output_path
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"TwitchDownloaderCLI executable not found at: {twitch_cli}"
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            error_output = (exc.stderr or exc.stdout or "").strip()
+            raise RuntimeError(f"TwitchDownloaderCLI failed: {error_output}") from exc
 
-        destination = self._unique_path(
-            self.downloads_dir / f"{sanitize_filename(source.stem)}{source.suffix.lower()}"
-        )
-        self._copy_with_progress(source, destination, progress_callback)
-        LOGGER.info("Local video copied to %s", destination)
-        return destination
+        if completed.stderr:
+            LOGGER.debug("TwitchDownloaderCLI output: %s", completed.stderr.strip())
+
+        if not output_path.exists():
+            raise FileNotFoundError("TwitchDownloaderCLI completed, but output file was not found.")
+
+        LOGGER.info("Finished TwitchDownloaderCLI download.")
+        if progress_callback is not None:
+            progress_callback(1.0, "Finished TwitchDownloaderCLI download.")
+
+        return output_path
 
     def _make_yt_dlp_progress_hook(
-        self, progress_callback: ProgressCallback | None
+        self,
+        progress_callback: ProgressCallback | None,
     ) -> Callable[[dict[str, Any]], None]:
         def progress_hook(status: dict[str, Any]) -> None:
             if progress_callback is None:
                 return
 
             state = status.get("status")
+
             if state == "downloading":
                 downloaded = float(status.get("downloaded_bytes") or 0)
-                total = float(status.get("total_bytes") or status.get("total_bytes_estimate") or 0)
+                total = float(
+                    status.get("total_bytes")
+                    or status.get("total_bytes_estimate")
+                    or 0
+                )
+
                 fraction = downloaded / total if total > 0 else 0.0
+
                 message = "Downloading"
+
                 if status.get("_percent_str"):
                     message = f"Downloading {str(status['_percent_str']).strip()}"
+
                 progress_callback(max(0.0, min(fraction, 0.98)), message)
+
             elif state == "finished":
                 progress_callback(1.0, "Download finished; finalizing media")
 

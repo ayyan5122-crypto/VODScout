@@ -660,6 +660,7 @@ class VODScoutApp(ctk.CTk):
         chunk_count = len(payload.get("chunks", []))
         self.status_var.set(f"Complete: {chunk_count} chunk file(s) saved")
         LOGGER.info("Workflow complete.")
+        self.file_var.set(str(payload["video"]))
         self._append_log(f"Video: {payload['video']}")
         self._append_log(f"Transcript: {payload['transcript']}")
         self._append_log(f"Transcript JSON: {payload['json']}")

@@ -3,37 +3,37 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-# Build files
-build/
-dist/
-*.spec
-
 # Virtual environments
-venv/
 .venv/
+venv/
 env/
 
-# VS Code
+# IDE
 .vscode/
+.idea/
 
-# Generated data
+# Build output
+build/
+dist/
+
+# PyInstaller
+*.spec.bak
+
+# Generated content
 downloads/
-transcripts/
 clips/
-logs/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Environment variables
-.env
-
-# Generated/output folders
-clips/
-downloads/
-prompts/
 reports/
 temp/
-transcripts/
-logs/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Python packaging
+*.egg-info/
+
+# Testing
+.pytest_cache/

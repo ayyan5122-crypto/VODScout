@@ -10,7 +10,15 @@ from typing import Any
 
 LOGGER = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+import sys
+from pathlib import Path
+
+if getattr(sys, "frozen", False):
+    # Running as a PyInstaller executable
+    PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    # Running from source
+    PROJECT_ROOT = Path(__file__).resolve().parent
 SETTINGS_FILE = PROJECT_ROOT / "settings.json"
 
 DOWNLOADS_DIR = PROJECT_ROOT / "downloads"
