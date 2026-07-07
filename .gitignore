@@ -37,3 +37,21 @@ Thumbs.db
 
 # Testing
 .pytest_cache/
+
+# AI models and caches
+models/
+cache/
+
+# Temporary media
+*.mp4
+*.mkv
+*.webm
+*.wav
+*.mp3
+
+# Faster-Whisper cache
+.whisper_cache/
+
+# Ruff / mypy
+.mypy_cache/
+.ruff_cache/
